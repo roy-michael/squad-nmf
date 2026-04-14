@@ -1,0 +1,79 @@
+################################################################################
+# Underwater Vehicle Sound Classifier - Pipeline Configuration
+#
+# This configuration file defines all parameters for the end-to-end audio
+# classification pipeline including preprocessing, feature extraction, and
+# machine learning classification.
+################################################################################
+
+# Audio Preprocessing Configuration
+# Controls the mel spectrogram generation and denoising pipeline
+preprocessor:
+  # FFT window size for Short-Time Fourier Transform
+  n_fft: 8192
+
+  # Minimum frequency to analyze (Hz)
+  # Typical underwater vehicles emit in lower frequency ranges
+  min_freq: 200
+
+  # Maximum frequency to analyze (Hz)
+  # Capped below Nyquist frequency based on sample rate
+  max_freq: 12000
+
+  # Number of Mel frequency bands
+  # Higher values provide more frequency resolution
+  n_mels: 512
+
+  # Noise gate multiplier for spectral gating
+  # Controls strength of background noise suppression (1.0 = no suppression)
+  noise_gate_multiplier: 1.5
+
+  # Margin parameter for Harmonic-Percussive Source Separation (HPSS)
+  # Larger values separate harmonic and percussive components more aggressively
+  hpss_margin: 3.0
+
+# NMF (Non-negative Matrix Factorization) Feature Extraction Configuration
+# Controls the decomposition and feature extraction from spectrograms
+nmf:
+  # Number of NMF components (basis functions)
+  # Each component captures distinct frequency patterns in the sound
+  n_components: 6
+
+  # Use sklearn's optimized NMF (True) or custom multiplicative updates (False)
+  use_sklearn: true
+
+  # Maximum iterations for NMF convergence algorithm
+  max_iter: 500
+
+# Machine Learning Classifier Configuration
+# Specifies which model type and hyperparameters to use
+classifier:
+  # Model type to use for classification
+  # Options:
+  #   'rf' : RandomForestClassifier (ensemble, robust, default)
+  #   'svm': Support Vector Classifier (high-dimensional, good generalization)
+  #   'gb' : GradientBoostingClassifier (sequential boosting)
+  model_type: 'rf'
+
+  # Random seed for reproducibility
+  random_state: 42
+
+# Class Labels and Names
+# Maps numeric class IDs (0, 1, 2, ...) to human-readable underwater vehicle types
+# Extensible for additional vehicle classes as needed
+label_names:
+  '0': 'AUV'                # Autonomous Underwater Vehicle
+  '1': 'Torpedo'             # Torpedo vehicle/projectile
+  '2': 'Surface_Vessel'      # Surface vessel or ship
+  # Additional classes can be added here:
+  # '3': 'Submarine'
+  # '4': 'Marine_Animal'
+  # '5': 'Cavitation_Bubble'
+
+################################################################################
+# Notes:
+# - All frequencies are in Hz
+# - Sample rate is detected automatically from audio files
+# - Feature vector dimension = n_components * 8 (4 moments from W, 4 from H)
+# - Class labels must be contiguous integers starting from 0
+################################################################################
