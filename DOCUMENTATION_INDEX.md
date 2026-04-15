@@ -79,6 +79,13 @@ All documentation files are in **`D:\dev\squad-nmf/`**
 - **Best for:** Understanding how visualizations prove simultaneous sound detection
 - **Size:** 15 KB
 
+### 10. **GPU_ACCELERATION_GUIDE.md** ⭐ NEW - PERFORMANCE & COMMANDS
+**File:** `D:\dev\squad-nmf\GPU_ACCELERATION_GUIDE.md`
+- **What:** GPU status, performance characteristics, and command reference
+- **Contains:** Current CPU-only status, parallelization with --n-jobs, worker limiting, recommended commands, memory requirements, troubleshooting
+- **Best for:** Understanding performance options and running commands with worker limits
+- **Size:** 10 KB
+
 ### 10. **PARALLELIZATION_SUMMARY.md**
 **File:** `D:\dev\squad-nmf\PARALLELIZATION_SUMMARY.md`
 - **What:** Parallel processing optimization guide
