@@ -25,13 +25,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import project modules
-from audio_loader import load_audio
-from preprocessor import AudioPreprocessor
-from feature_extractor import NMFFeatureExtractor
-from classifier import SoundClassifier, ClassifierDataset
-from pipeline import UnderWaterAudioPipeline
-from kmeans_clusterer import KMeansClusterer, cluster_audio_directory
-from visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
+try:
+    from .audio_loader import load_audio
+    from .preprocessor import AudioPreprocessor
+    from .feature_extractor import NMFFeatureExtractor
+    from .classifier import SoundClassifier, ClassifierDataset
+    from .pipeline import UnderWaterAudioPipeline
+    from .kmeans_clusterer import KMeansClusterer, cluster_audio_directory
+    from .visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
+except ImportError:
+    # For direct execution from src/
+    from audio_loader import load_audio
+    from preprocessor import AudioPreprocessor
+    from feature_extractor import NMFFeatureExtractor
+    from classifier import SoundClassifier, ClassifierDataset
+    from pipeline import UnderWaterAudioPipeline
+    from kmeans_clusterer import KMeansClusterer, cluster_audio_directory
+    from visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
 
 
 # ============================================================================

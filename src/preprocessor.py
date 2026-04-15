@@ -5,7 +5,11 @@ import warnings
 from typing import Dict, Any
 import numpy as np
 import librosa
-from welch import Analysis
+
+try:
+    from .welch import Analysis
+except ImportError:
+    from welch import Analysis
 
 
 class AudioPreprocessor(Analysis):

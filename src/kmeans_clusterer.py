@@ -16,12 +16,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 try:
-    from .feature_extractor import extract_nmf_features
+    from .feature_extractor import NMFFeatureExtractor
     from .preprocessor import AudioPreprocessor
     from .audio_loader import load_audio
 except ImportError:
     # For direct imports during testing
-    from feature_extractor import extract_nmf_features
+    from feature_extractor import NMFFeatureExtractor
     from preprocessor import AudioPreprocessor
     from audio_loader import load_audio
 
@@ -202,18 +202,31 @@ class KMeansClusterer:
         features_scaled = self.scaler.fit_transform(features)
         scores = {}
 
-        logger.info(f"Testing cluster counts from {k_range[0]} to {k_range[1]}")
+        n_samples = features.shape[0]
+        max_k = min(k_range[1], n_samples - 1)
 
-        for k in range(k_range[0], k_range[1] + 1):
+        if max_k < k_range[0]:
+            logger.warning(f"Not enough samples ({n_samples}) to test clustering. Need at least {k_range[0] + 1}.")
+            return scores
+            
+        if max_k < k_range[1]:
+            logger.info(f"Adjusted max cluster count from {k_range[1]} to {max_k} due to sample size ({n_samples})")
+
+        logger.info(f"Testing cluster counts from {k_range[0]} to {max_k}")
+
+        for k in range(k_range[0], max_k + 1):
             km = KMeans(
                 n_clusters=k,
                 random_state=self.random_state,
                 n_init=self.n_init,
             )
             labels = km.fit_predict(features_scaled)
-            score = silhouette_score(features_scaled, labels)
-            scores[k] = score
-            logger.info(f"  k={k}: silhouette={score:.3f}")
+            try:
+                score = silhouette_score(features_scaled, labels)
+                scores[k] = score
+                logger.info(f"  k={k}: silhouette={score:.3f}")
+            except ValueError as e:
+                logger.warning(f"  k={k}: Could not calculate silhouette score - {e}")
 
         return scores
 
@@ -241,7 +254,7 @@ def cluster_audio_directory(
                 "n_fft": 8192,
                 "min_freq": 200,
                 "max_freq": 12000,
-                "n_mels": 512,
+                "n_mels": 128,
                 "noise_gate_multiplier": 1.5,
                 "hpss_margin": 3.0,
             },
@@ -249,7 +262,8 @@ def cluster_audio_directory(
         }
 
     # Load audio files
-    preprocessor = AudioPreprocessor(config["preprocessor"])
+    preprocessor = AudioPreprocessor(**config["preprocessor"])
+    feature_extractor = NMFFeatureExtractor(**config["nmf"])
 
     wav_files = sorted(Path(data_dir).glob("*.wav"))
     logger.info(f"Found {len(wav_files)} WAV files in {data_dir}")
@@ -263,21 +277,14 @@ def cluster_audio_directory(
 
     for wav_file in wav_files:
         try:
-            result = load_audio(str(wav_file))
-            if result is None or len(result) != 2:
-                continue
-
-            audio, sr = result
-            if audio is None:
-                continue
-
+            # load_audio raises an exception on failure, which is caught below.
+            audio, sr = load_audio(str(wav_file))
             spectrogram = preprocessor.preprocess(audio, sr)
-            features = extract_nmf_features(spectrogram, config["nmf"])
+            features = feature_extractor.extract(spectrogram)
 
             features_list.append(features)
             valid_files.append(str(wav_file))
             logger.debug(f"Extracted features from {wav_file.name}")
-
         except Exception as e:
             logger.warning(f"Failed to process {wav_file.name}: {e}")
             continue

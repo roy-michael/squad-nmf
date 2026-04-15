@@ -70,7 +70,7 @@ def main():
     features_list = []
     valid_labels = []
     
-    preprocessor = AudioPreprocessor(n_fft=8192, min_freq=200, max_freq=12000, n_mels=512)
+    preprocessor = AudioPreprocessor(n_fft=8192, min_freq=200, max_freq=12000, n_mels=128)
     feature_extractor = NMFFeatureExtractor(n_components=6, use_sklearn=True, max_iter=500)
     
     for i, (audio_path, label) in enumerate(zip(audio_files, labels)):
@@ -86,6 +86,7 @@ def main():
             # Extract features
             features = feature_extractor.extract(S_mel)
             
+            # The feature extractor already returns a fixed-length 1D feature vector.
             features_list.append(features)
             valid_labels.append(label)
             

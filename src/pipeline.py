@@ -15,10 +15,17 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from audio_loader import load_audio
-from preprocessor import AudioPreprocessor
-from feature_extractor import NMFFeatureExtractor
-from classifier import SoundClassifier, ClassifierDataset
+try:
+    from .audio_loader import load_audio
+    from .preprocessor import AudioPreprocessor
+    from .feature_extractor import NMFFeatureExtractor
+    from .classifier import SoundClassifier, ClassifierDataset
+except ImportError:
+    # Support both package import and direct module execution
+    from audio_loader import load_audio
+    from preprocessor import AudioPreprocessor
+    from feature_extractor import NMFFeatureExtractor
+    from classifier import SoundClassifier, ClassifierDataset
 
 
 # Configure logging
@@ -136,7 +143,7 @@ class UnderWaterAudioPipeline:
                 'n_fft': 8192,
                 'min_freq': 200,
                 'max_freq': 12000,
-                'n_mels': 512,
+                'n_mels': 128,
                 'noise_gate_multiplier': 1.5,
                 'hpss_margin': 3.0,
             },
@@ -170,32 +177,18 @@ class UnderWaterAudioPipeline:
         logger.debug("Audio loader initialized")
 
         # Initialize preprocessor
-        preprocessor_config = self.config.get('preprocessor', {})
-        self.preprocessor = AudioPreprocessor(
-            n_fft=preprocessor_config.get('n_fft', 8192),
-            min_freq=preprocessor_config.get('min_freq', 200),
-            max_freq=preprocessor_config.get('max_freq', 12000),
-            n_mels=preprocessor_config.get('n_mels', 512),
-            noise_gate_multiplier=preprocessor_config.get('noise_gate_multiplier', 1.5),
-            hpss_margin=preprocessor_config.get('hpss_margin', 3.0),
-        )
+        preprocessor_config = self.config['preprocessor']
+        self.preprocessor = AudioPreprocessor(**preprocessor_config)
         logger.debug("AudioPreprocessor initialized")
 
         # Initialize feature extractor
-        nmf_config = self.config.get('nmf', {})
-        self.feature_extractor = NMFFeatureExtractor(
-            n_components=nmf_config.get('n_components', 6),
-            use_sklearn=nmf_config.get('use_sklearn', True),
-            max_iter=nmf_config.get('max_iter', 500),
-        )
+        nmf_config = self.config['nmf']
+        self.feature_extractor = NMFFeatureExtractor(**nmf_config)
         logger.debug("NMFFeatureExtractor initialized")
 
         # Initialize classifier
-        classifier_config = self.config.get('classifier', {})
-        self.classifier = SoundClassifier(
-            model_type=classifier_config.get('model_type', 'rf'),
-            random_state=classifier_config.get('random_state', 42),
-        )
+        classifier_config = self.config['classifier']
+        self.classifier = SoundClassifier(**classifier_config)
         logger.debug("SoundClassifier initialized")
 
     def process_audio(self, audio_path: str) -> Dict[str, Any]:

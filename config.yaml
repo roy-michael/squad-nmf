@@ -22,7 +22,7 @@ preprocessor:
 
   # Number of Mel frequency bands
   # Higher values provide more frequency resolution
-  n_mels: 512
+  n_mels: 128
 
   # Noise gate multiplier for spectral gating
   # Controls strength of background noise suppression (1.0 = no suppression)
