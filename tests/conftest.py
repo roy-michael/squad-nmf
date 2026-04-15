@@ -4,11 +4,16 @@ Pytest configuration and shared fixtures for underwater vehicle sound classifier
 Provides synthetic test data and common utilities for all test modules.
 """
 import os
+import sys
 import tempfile
 import pytest
 import numpy as np
 import librosa
 import soundfile as sf
+from pathlib import Path
+
+# Add src directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 
 @pytest.fixture
