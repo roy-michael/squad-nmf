@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score
+from joblib import Parallel, delayed
 
 try:
     from .feature_extractor import NMFFeatureExtractor
@@ -231,6 +232,34 @@ class KMeansClusterer:
         return scores
 
 
+def _process_single_audio_file(
+    wav_file: Path,
+    preprocessor: AudioPreprocessor,
+    feature_extractor: NMFFeatureExtractor,
+) -> Tuple[Optional[np.ndarray], str]:
+    """
+    Process a single audio file for feature extraction.
+    
+    Helper for parallel processing. Returns (features, filepath) or (None, filepath) on error.
+    """
+    try:
+        result = load_audio(str(wav_file))
+        if result is None or len(result) != 2:
+            return None, str(wav_file)
+        
+        audio, sr = result
+        if audio is None:
+            return None, str(wav_file)
+        
+        spectrogram = preprocessor.preprocess(audio, sr)
+        features = feature_extractor.extract(spectrogram)
+        return features, str(wav_file)
+    
+    except Exception as e:
+        logger.warning(f"Failed to process {wav_file.name}: {e}")
+        return None, str(wav_file)
+
+
 def cluster_audio_directory(
     data_dir: Path,
     n_clusters: int = 3,
@@ -271,24 +300,23 @@ def cluster_audio_directory(
     if len(wav_files) == 0:
         raise ValueError(f"No WAV files found in {data_dir}")
 
-    # Extract features
+    # Extract features using parallel processing
+    logger.info(f"Extracting features from {len(wav_files)} files (parallel processing)...")
+    
+    results = Parallel(n_jobs=-1, verbose=1)(
+        delayed(_process_single_audio_file)(wav_file, preprocessor, feature_extractor)
+        for wav_file in wav_files
+    )
+    
+    # Collect valid results
     features_list = []
     valid_files = []
-
-    for wav_file in wav_files:
-        try:
-            # load_audio raises an exception on failure, which is caught below.
-            audio, sr = load_audio(str(wav_file))
-            spectrogram = preprocessor.preprocess(audio, sr)
-            features = feature_extractor.extract(spectrogram)
-
+    for features, filepath in results:
+        if features is not None:
             features_list.append(features)
-            valid_files.append(str(wav_file))
-            logger.debug(f"Extracted features from {wav_file.name}")
-        except Exception as e:
-            logger.warning(f"Failed to process {wav_file.name}: {e}")
-            continue
-
+            valid_files.append(filepath)
+            logger.debug(f"Extracted features from {Path(filepath).name}")
+    
     features = np.array(features_list)
     logger.info(f"Extracted {features.shape[1]}-dim features from {len(valid_files)} files")
 

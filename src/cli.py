@@ -1000,7 +1000,7 @@ def cluster(
             writer.writerow(['filename', 'cluster'])
             for filename, label in zip(files, result.labels):
                 writer.writerow([Path(filename).name, int(label)])
-        click.echo(f"\n✓ Saved cluster assignments: {output_csv}")
+        click.echo(f"\n[OK] Saved cluster assignments: {output_csv}")
 
         # Create visualizations
         os.makedirs(plot_dir, exist_ok=True)
@@ -1013,7 +1013,7 @@ def cluster(
             title=f"K-Means Clustering (k={n_clusters})",
             save_path=scatter_path
         )
-        click.echo(f"✓ Saved scatter plot: {scatter_path}")
+        click.echo(f"[OK] Saved scatter plot: {scatter_path}")
 
         # Silhouette plot
         silhouette_path = os.path.join(plot_dir, "silhouette_analysis.png")
@@ -1023,7 +1023,7 @@ def cluster(
             result.silhouette_score,
             save_path=silhouette_path
         )
-        click.echo(f"✓ Saved silhouette plot: {silhouette_path}")
+        click.echo(f"[OK] Saved silhouette plot: {silhouette_path}")
 
         click.echo("")
         click.echo(click.style("Next Steps:", fg="yellow"))

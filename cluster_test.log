@@ -1,0 +1,28 @@
+[*] Clustering .\data\Location_2307 into 3 clusters...
+2026-04-15 16:36:07,906 - src.pipeline - INFO - Using default pipeline configuration
+2026-04-15 16:36:07,906 - src.pipeline - INFO - Using default pipeline configuration
+2026-04-15 16:36:07,906 - src.pipeline - INFO - Pipeline components initialized successfully
+2026-04-15 16:36:07,906 - src.pipeline - INFO - Pipeline components initialized successfully
+2026-04-15 16:36:07,906 - src.kmeans_clusterer - INFO - Found 5 WAV files in data\Location_2307
+2026-04-15 16:36:07,906 - src.kmeans_clusterer - INFO - Extracting features from 5 files (parallel processing)...
+[Parallel(n_jobs=-1)]: Using backend LokyBackend with 28 concurrent workers.
+C:\Users\gorke\AppData\Local\Programs\Python\Python314\Lib\site-packages\sklearn\decomposition\_nmf.py:1720: ConvergenceWarning: Maximum number of iterations 500 reached. Increase it to improve convergence.
+  warnings.warn(
+C:\Users\gorke\AppData\Local\Programs\Python\Python314\Lib\site-packages\sklearn\decomposition\_nmf.py:1720: ConvergenceWarning: Maximum number of iterations 500 reached. Increase it to improve convergence.
+  warnings.warn(
+[Parallel(n_jobs=-1)]: Done   5 out of   5 | elapsed:   29.8s finished
+2026-04-15 16:36:37,847 - src.kmeans_clusterer - INFO - Extracted 48-dim features from 5 files
+2026-04-15 16:36:37,848 - src.kmeans_clusterer - INFO - Fitting K-means with n_clusters=3 on 5 samples
+2026-04-15 16:36:39,512 - src.kmeans_clusterer - INFO - Silhouette Score: 0.079
+2026-04-15 16:36:39,512 - src.kmeans_clusterer - INFO - Davies-Bouldin Index: 0.919
+2026-04-15 16:36:39,512 - src.kmeans_clusterer - INFO - Cluster distribution: [2 1 2]
+
+Clustering Results:
+  Silhouette Score: +0.0786
+  Davies-Bouldin Index: 0.9190
+  Total Inertia: 68.8913
+
+  Cluster 0: 2 files
+  Cluster 1: 1 files
+  Cluster 2: 2 files
+[ERROR] 'charmap' codec can't encode character '\u2713' in position 3: character maps to <undefined>
