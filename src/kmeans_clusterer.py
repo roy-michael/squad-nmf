@@ -51,6 +51,7 @@ class TemporalClusteringResult:
     components_active: Dict[int, List[int]]  # {cluster_id: [active_component_indices]}
     component_strength: Dict[int, float]  # {cluster_id: mean_activation_strength}
     cluster_times: Dict[int, Tuple[float, float]]  # {cluster_id: (start_sec, end_sec)}
+    H_matrix: Optional[np.ndarray] = None  # NMF activation matrix for visualization
 
 
 class KMeansClusterer:
@@ -285,6 +286,7 @@ class KMeansClusterer:
             components_active=components_active,
             component_strength=component_strength,
             cluster_times=cluster_times,
+            H_matrix=H,  # Store for visualization
         )
 
     def find_optimal_clusters(

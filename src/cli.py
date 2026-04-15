@@ -33,6 +33,7 @@ try:
     from .pipeline import UnderWaterAudioPipeline
     from .kmeans_clusterer import KMeansClusterer, cluster_audio_directory, cluster_temporal_patterns_directory
     from .visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
+    from .temporal_visualizer import create_all_visualizations
 except ImportError:
     # For direct execution from src/
     from audio_loader import load_audio
@@ -42,6 +43,7 @@ except ImportError:
     from pipeline import UnderWaterAudioPipeline
     from kmeans_clusterer import KMeansClusterer, cluster_audio_directory, cluster_temporal_patterns_directory
     from visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
+    from temporal_visualizer import create_all_visualizations
 
 
 # ============================================================================
@@ -1072,6 +1074,17 @@ def cluster(
     help='Path to save temporal analysis results. [default: temporal_analysis.json]'
 )
 @click.option(
+    '--visualize',
+    is_flag=True,
+    help='Generate component activation visualizations (timeline, heatmap, summary).'
+)
+@click.option(
+    '--viz-dir',
+    type=click.Path(),
+    default='temporal_visualizations',
+    help='Directory to save visualizations. [default: temporal_visualizations]'
+)
+@click.option(
     '--n-jobs',
     type=int,
     default=-1,
@@ -1086,6 +1099,8 @@ def temporal_cluster(
     input_dir: str,
     n_patterns: int,
     output_json: str,
+    visualize: bool,
+    viz_dir: str,
     n_jobs: int,
     verbose: bool
 ) -> None:
@@ -1098,7 +1113,7 @@ def temporal_cluster(
     Useful for recordings containing multiple vehicles or mixed background noise.
     
     Example:
-        underwater-audio temporal-cluster --input-dir ./recordings --n-patterns 3
+        underwater-audio temporal-cluster --input-dir ./recordings --n-patterns 3 --visualize
     """
     try:
         if verbose:
@@ -1163,6 +1178,35 @@ def temporal_cluster(
             json.dump(output_data, f, indent=2)
         click.echo(f"[OK] Saved temporal analysis: {output_json}")
 
+        # Generate visualizations if requested
+        if visualize:
+            click.echo("")
+            click.echo(click.style("[*] Generating component activation visualizations...", fg="cyan"))
+            
+            viz_count = 0
+            for filepath, temp_result in temporal_results.items():
+                if temp_result.H_matrix is not None:
+                    try:
+                        create_all_visualizations(
+                            H=temp_result.H_matrix,
+                            cluster_labels=temp_result.time_clusters,
+                            output_dir=Path(viz_dir),
+                            filename=Path(filepath).name,
+                            sample_rate=8000,
+                            hop_length=512,
+                        )
+                        viz_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to create visualizations for {filepath}: {e}")
+            
+            if viz_count > 0:
+                click.echo(f"[OK] Generated visualizations for {viz_count} files in: {viz_dir}")
+                click.echo("")
+                click.echo("Visualization files created:")
+                click.echo(f"  • {viz_dir}/<filename>_timeline.png - Component activations over time")
+                click.echo(f"  • {viz_dir}/<filename>_heatmap.png - Component intensity heatmap")
+                click.echo(f"  • {viz_dir}/<filename>_summary.png - Pattern comparison (mean activations)")
+
         click.echo("")
         click.echo(click.style("Interpretation Guide:", fg="yellow"))
         click.echo("- Each pattern represents a distinct sound signature within the file")
@@ -1170,9 +1214,15 @@ def temporal_cluster(
         click.echo("- Active components indicate which NMF bases contribute to each pattern")
         click.echo("- Strength indicates how dominant this pattern is (0-1 scale)")
         click.echo("")
+        click.echo("For simultaneous sources:")
+        click.echo("- Multiple patterns with overlapping times = sources active together")
+        click.echo("- Multiple active components in same pattern = mixed signal")
+        click.echo("- Higher strength = dominant signal, lower = background/weak")
+        click.echo("")
         click.echo("Example:")
-        click.echo("  File contains Pattern_0 (0.0s-15.0s) and Pattern_1 (15.0s-30.0s)")
-        click.echo("  => Likely two different vehicles or noise sources")
+        click.echo("  File contains Pattern_0 (0.0s-30.0s, low strength) and")
+        click.echo("  Pattern_1 (10.0s-20.0s, high strength)")
+        click.echo("  => Background noise (Pattern_0) + vehicle (Pattern_1) overlapping")
 
     except Exception as e:
         click.echo(click.style(f"[ERROR] {str(e)}", fg="red"), err=True)
