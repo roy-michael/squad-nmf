@@ -899,6 +899,18 @@ def config(
     help='Number of NMF components. [default: 6]'
 )
 @click.option(
+    '--n-jobs',
+    type=int,
+    default=-1,
+    help='Number of parallel workers. -1 = all cores, 1 = sequential. [default: -1]'
+)
+@click.option(
+    '--cluster-mode',
+    type=click.Choice(['features', 'basis', 'activation', 'combined']),
+    default='features',
+    help='What to cluster: features (aggregated), basis (W), activation (H), or combined. [default: features]'
+)
+@click.option(
     '--verbose',
     is_flag=True,
     help='Enable verbose logging.'
@@ -910,6 +922,8 @@ def cluster(
     plot_dir: str,
     find_optimal: bool,
     n_components: int,
+    n_jobs: int,
+    cluster_mode: str,
     verbose: bool
 ) -> None:
     """
@@ -940,7 +954,7 @@ def cluster(
             click.echo(click.style("[*] Testing cluster counts (2-10)...", fg="cyan"))
 
             result, clusterer, files = cluster_audio_directory(
-                Path(input_dir), n_clusters=2, config=config
+                Path(input_dir), n_clusters=2, config=config, n_jobs=n_jobs, cluster_mode=cluster_mode
             )
 
             # Test different k values
@@ -961,7 +975,7 @@ def cluster(
             n_clusters = best_k
             click.echo(f"\nReclustering with k={n_clusters}...")
             result, clusterer, files = cluster_audio_directory(
-                Path(input_dir), n_clusters=n_clusters, config=config
+                Path(input_dir), n_clusters=n_clusters, config=config, n_jobs=n_jobs, cluster_mode=cluster_mode
             )
 
             # Save elbow plot
@@ -971,9 +985,9 @@ def cluster(
             click.echo(f"  Saved: {elbow_path}")
         else:
             # Standard clustering
-            click.echo(click.style(f"[*] Clustering {input_dir} into {n_clusters} clusters...", fg="cyan"))
+            click.echo(click.style(f"[*] Clustering {input_dir} into {n_clusters} clusters (mode={cluster_mode}, n_jobs={n_jobs})...", fg="cyan"))
             result, clusterer, files = cluster_audio_directory(
-                Path(input_dir), n_clusters=n_clusters, config=config
+                Path(input_dir), n_clusters=n_clusters, config=config, n_jobs=n_jobs, cluster_mode=cluster_mode
             )
 
         # Print cluster info

@@ -260,10 +260,43 @@ def _process_single_audio_file(
         return None, str(wav_file)
 
 
+def _process_single_audio_file_nmf(
+    wav_file: Path,
+    preprocessor: AudioPreprocessor,
+    feature_extractor: NMFFeatureExtractor,
+) -> Tuple[Optional[Tuple[np.ndarray, np.ndarray]], str]:
+    """
+    Process a single audio file to extract NMF basis (W) and activation (H) matrices.
+    
+    Returns (W, H) matrices for clustering individual components, not aggregated features.
+    """
+    try:
+        result = load_audio(str(wav_file))
+        if result is None or len(result) != 2:
+            return None, str(wav_file)
+        
+        audio, sr = result
+        if audio is None:
+            return None, str(wav_file)
+        
+        spectrogram = preprocessor.preprocess(audio, sr)
+        # Extract features to compute NMF
+        _ = feature_extractor.extract(spectrogram)
+        # Get the W (basis) and H (activation) matrices
+        W, H = feature_extractor.get_components()
+        return (W, H), str(wav_file)
+    
+    except Exception as e:
+        logger.warning(f"Failed to process {wav_file.name}: {e}")
+        return None, str(wav_file)
+
+
 def cluster_audio_directory(
     data_dir: Path,
     n_clusters: int = 3,
     config: Optional[Dict] = None,
+    n_jobs: int = -1,
+    cluster_mode: str = 'features',
 ) -> Tuple[ClusteringResult, KMeansClusterer, List[str]]:
     """
     Convenience function to load audio directory and run clustering.
@@ -272,6 +305,8 @@ def cluster_audio_directory(
         data_dir: Directory containing WAV files
         n_clusters: Number of clusters to find
         config: Configuration dict (uses defaults if None)
+        n_jobs: Number of parallel workers (-1 = all cores, 1 = sequential)
+        cluster_mode: 'features' (aggregated), 'basis' (W), 'activation' (H), or 'combined'
 
     Returns:
         Tuple of (ClusteringResult, KMeansClusterer, list of audio files)
@@ -293,6 +328,7 @@ def cluster_audio_directory(
     # Load audio files
     preprocessor = AudioPreprocessor(**config["preprocessor"])
     feature_extractor = NMFFeatureExtractor(**config["nmf"])
+    n_components = config["nmf"]["n_components"]
 
     wav_files = sorted(Path(data_dir).glob("*.wav"))
     logger.info(f"Found {len(wav_files)} WAV files in {data_dir}")
@@ -301,24 +337,66 @@ def cluster_audio_directory(
         raise ValueError(f"No WAV files found in {data_dir}")
 
     # Extract features using parallel processing
-    logger.info(f"Extracting features from {len(wav_files)} files (parallel processing)...")
+    if cluster_mode == 'features':
+        # Standard: aggregate features per file
+        logger.info(f"Extracting aggregated features from {len(wav_files)} files (n_jobs={n_jobs})...")
+        results = Parallel(n_jobs=n_jobs, verbose=1)(
+            delayed(_process_single_audio_file)(wav_file, preprocessor, feature_extractor)
+            for wav_file in wav_files
+        )
+        
+        features_list = []
+        valid_files = []
+        for features, filepath in results:
+            if features is not None:
+                features_list.append(features)
+                valid_files.append(filepath)
+                logger.debug(f"Extracted features from {Path(filepath).name}")
+        
+        features = np.array(features_list)
+        logger.info(f"Extracted {features.shape[1]}-dim features from {len(valid_files)} files")
     
-    results = Parallel(n_jobs=-1, verbose=1)(
-        delayed(_process_single_audio_file)(wav_file, preprocessor, feature_extractor)
-        for wav_file in wav_files
-    )
-    
-    # Collect valid results
-    features_list = []
-    valid_files = []
-    for features, filepath in results:
-        if features is not None:
-            features_list.append(features)
-            valid_files.append(filepath)
-            logger.debug(f"Extracted features from {Path(filepath).name}")
-    
-    features = np.array(features_list)
-    logger.info(f"Extracted {features.shape[1]}-dim features from {len(valid_files)} files")
+    else:
+        # NMF-based: cluster W and/or H matrices
+        logger.info(f"Extracting NMF basis/activation from {len(wav_files)} files (n_jobs={n_jobs})...")
+        results = Parallel(n_jobs=n_jobs, verbose=1)(
+            delayed(_process_single_audio_file_nmf)(wav_file, preprocessor, feature_extractor)
+            for wav_file in wav_files
+        )
+        
+        valid_files = []
+        W_list = []
+        H_list = []
+        
+        for nmf_result, filepath in results:
+            if nmf_result is not None:
+                W, H = nmf_result
+                W_list.append(W)
+                H_list.append(H)
+                valid_files.append(filepath)
+                logger.debug(f"Extracted NMF from {Path(filepath).name}: W={W.shape}, H={H.shape}")
+        
+        # Flatten W and H matrices based on cluster_mode
+        if cluster_mode == 'basis':
+            # Cluster W (basis functions): flatten each W matrix
+            features = np.array([W.flatten() for W in W_list])
+            logger.info(f"Clustering W basis: {features.shape[0]} files × {features.shape[1]} features")
+        
+        elif cluster_mode == 'activation':
+            # Cluster H (activations): mean across time, then flatten
+            features = np.array([np.mean(H, axis=1) for H in H_list])
+            logger.info(f"Clustering H activation means: {features.shape[0]} files × {features.shape[1]} features")
+        
+        elif cluster_mode == 'combined':
+            # Combine W and H: stack basis with mean activation
+            features_list = []
+            for W, H in zip(W_list, H_list):
+                W_flat = W.flatten()
+                H_mean = np.mean(H, axis=1)
+                combined = np.concatenate([W_flat, H_mean])
+                features_list.append(combined)
+            features = np.array(features_list)
+            logger.info(f"Clustering combined W+H: {features.shape[0]} files × {features.shape[1]} features")
 
     # Cluster
     clusterer = KMeansClusterer(n_clusters=n_clusters)
