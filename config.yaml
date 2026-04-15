@@ -45,6 +45,22 @@ nmf:
   # Maximum iterations for NMF convergence algorithm
   max_iter: 500
 
+# K-Means Clustering Configuration
+# For unsupervised discovery of sound patterns in unlabeled recordings
+kmeans:
+  # Number of clusters to find
+  # Start with 3-5 and use find_optimal_clusters() to tune
+  n_clusters: 3
+
+  # Random seed for reproducibility
+  random_state: 42
+
+  # Number of K-means initializations to try (higher = more robust but slower)
+  n_init: 10
+
+  # Maximum iterations for convergence
+  max_iter: 300
+
 # Machine Learning Classifier Configuration
 # Specifies which model type and hyperparameters to use
 classifier:

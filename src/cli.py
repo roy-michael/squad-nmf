@@ -30,6 +30,8 @@ from preprocessor import AudioPreprocessor
 from feature_extractor import NMFFeatureExtractor
 from classifier import SoundClassifier, ClassifierDataset
 from pipeline import UnderWaterAudioPipeline
+from kmeans_clusterer import KMeansClusterer, cluster_audio_directory
+from visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
 
 
 # ============================================================================
@@ -843,6 +845,186 @@ def config(
 
     except Exception as e:
         click.echo(click.style(f"[✗] Error: {str(e)}", fg="red"), err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# Cluster Command (Unsupervised)
+# ============================================================================
+
+@main.command()
+@click.option(
+    '--input-dir',
+    required=True,
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help='Directory containing WAV files to cluster (flat directory, no subdirs).'
+)
+@click.option(
+    '--n-clusters',
+    type=int,
+    default=3,
+    help='Number of clusters to find. [default: 3]'
+)
+@click.option(
+    '--output-csv',
+    type=click.Path(),
+    default='cluster_assignments.csv',
+    help='Path to save cluster assignments CSV. [default: cluster_assignments.csv]'
+)
+@click.option(
+    '--plot-dir',
+    type=click.Path(),
+    default='./cluster_plots',
+    help='Directory to save visualization plots. [default: ./cluster_plots]'
+)
+@click.option(
+    '--find-optimal',
+    is_flag=True,
+    help='Test different cluster counts and find optimal k (2-10).'
+)
+@click.option(
+    '--n-components',
+    type=int,
+    default=6,
+    help='Number of NMF components. [default: 6]'
+)
+@click.option(
+    '--verbose',
+    is_flag=True,
+    help='Enable verbose logging.'
+)
+def cluster(
+    input_dir: str,
+    n_clusters: int,
+    output_csv: str,
+    plot_dir: str,
+    find_optimal: bool,
+    n_components: int,
+    verbose: bool
+) -> None:
+    """
+    Discover sound patterns using unsupervised K-means clustering.
+
+    Loads WAV files from a directory, extracts NMF features, and clusters them
+    to discover natural groupings in your unlabeled recordings.
+
+    This is useful for exploratory analysis: inspect clusters, manually label them,
+    then use the labels to train a supervised classifier.
+
+    Example:
+        underwater-audio cluster --input-dir ./ocean_recordings --n-clusters 3 \\
+            --plot-dir ./analysis --verbose
+    """
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        click.echo(click.style("[INFO] Verbose mode enabled", fg="cyan"))
+
+    try:
+        # Load config
+        pipeline = UnderWaterAudioPipeline()
+        config = pipeline.config
+        config['nmf']['n_components'] = n_components
+
+        # Check if finding optimal clusters
+        if find_optimal:
+            click.echo(click.style("[*] Testing cluster counts (2-10)...", fg="cyan"))
+
+            result, clusterer, files = cluster_audio_directory(
+                Path(input_dir), n_clusters=2, config=config
+            )
+
+            # Test different k values
+            scores = clusterer.find_optimal_clusters(
+                clusterer.features_raw, k_range=(2, 10)
+            )
+
+            # Print results
+            click.echo("")
+            click.echo(click.style("Silhouette Scores by Cluster Count:", fg="green"))
+            for k in sorted(scores.keys()):
+                click.echo(f"  k={k:2d}: {scores[k]:+.4f}")
+
+            best_k = max(scores, key=scores.get)
+            click.echo(f"\nBest k: {best_k} (score: {scores[best_k]:+.4f})")
+
+            # Re-cluster with best k
+            n_clusters = best_k
+            click.echo(f"\nReclustering with k={n_clusters}...")
+            result, clusterer, files = cluster_audio_directory(
+                Path(input_dir), n_clusters=n_clusters, config=config
+            )
+
+            # Save elbow plot
+            os.makedirs(plot_dir, exist_ok=True)
+            elbow_path = os.path.join(plot_dir, "elbow_curve.png")
+            plot_elbow_curve(scores, save_path=elbow_path)
+            click.echo(f"  Saved: {elbow_path}")
+        else:
+            # Standard clustering
+            click.echo(click.style(f"[*] Clustering {input_dir} into {n_clusters} clusters...", fg="cyan"))
+            result, clusterer, files = cluster_audio_directory(
+                Path(input_dir), n_clusters=n_clusters, config=config
+            )
+
+        # Print cluster info
+        click.echo("")
+        click.echo(click.style("Clustering Results:", fg="green"))
+        click.echo(f"  Silhouette Score: {result.silhouette_score:+.4f}")
+        click.echo(f"  Davies-Bouldin Index: {result.davies_bouldin_score:.4f}")
+        click.echo(f"  Total Inertia: {result.inertia:.4f}")
+        click.echo("")
+
+        cluster_info = clusterer.get_cluster_info(result)
+        for cluster_id, info in sorted(cluster_info.items()):
+            click.echo(f"  Cluster {cluster_id}: {info['size']} files")
+            if verbose:
+                for sample in info['samples'][:3]:  # Show first 3
+                    click.echo(f"    - {Path(sample).name}")
+                if len(info['samples']) > 3:
+                    click.echo(f"    ... and {len(info['samples']) - 3} more")
+
+        # Save cluster assignments to CSV
+        os.makedirs(os.path.dirname(output_csv) or '.', exist_ok=True)
+        with open(output_csv, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['filename', 'cluster'])
+            for filename, label in zip(files, result.labels):
+                writer.writerow([Path(filename).name, int(label)])
+        click.echo(f"\n✓ Saved cluster assignments: {output_csv}")
+
+        # Create visualizations
+        os.makedirs(plot_dir, exist_ok=True)
+
+        # Scatter plot
+        scatter_path = os.path.join(plot_dir, "clusters_2d.png")
+        plot_cluster_scatter(
+            clusterer.features_raw,
+            result.labels,
+            title=f"K-Means Clustering (k={n_clusters})",
+            save_path=scatter_path
+        )
+        click.echo(f"✓ Saved scatter plot: {scatter_path}")
+
+        # Silhouette plot
+        silhouette_path = os.path.join(plot_dir, "silhouette_analysis.png")
+        plot_silhouette_analysis(
+            clusterer.features_raw,
+            result.labels,
+            result.silhouette_score,
+            save_path=silhouette_path
+        )
+        click.echo(f"✓ Saved silhouette plot: {silhouette_path}")
+
+        click.echo("")
+        click.echo(click.style("Next Steps:", fg="yellow"))
+        click.echo(f"1. Review clusters in: {output_csv}")
+        click.echo(f"2. Check visualizations in: {plot_dir}/")
+        click.echo(f"3. Manually label clusters by sound type (vehicle type, etc.)")
+        click.echo(f"4. Create subdirectories with labeled data")
+        click.echo(f"5. Train supervised model: underwater-audio train --data-dir <labeled_data>")
+
+    except Exception as e:
+        click.echo(click.style(f"[ERROR] {str(e)}", fg="red"), err=True)
         sys.exit(1)
 
 

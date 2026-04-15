@@ -1,7 +1,7 @@
 {
   "id": "e5fc2b49-78b1-49fd-af85-9501444bdc80",
   "createdAt": "2026-04-14T14:42:38.106Z",
-  "lastActiveAt": "2026-04-14T17:49:20.160Z",
+  "lastActiveAt": "2026-04-14T21:31:26.567Z",
   "messages": [
     {
       "role": "system",
@@ -89,6 +89,26 @@
       "role": "system",
       "content": "⚠ No Squad team found. Run /init to create your team first.",
       "timestamp": "2026-04-14T17:49:20.160Z"
+    },
+    {
+      "role": "system",
+      "content": "🏗️ No team yet — casting one based on your project...",
+      "timestamp": "2026-04-14T21:28:26.168Z"
+    },
+    {
+      "role": "system",
+      "content": "⚠ Could not parse a team proposal from the model response.\n\nTry again, or run: squad init \"describe your project\"",
+      "timestamp": "2026-04-14T21:28:32.538Z"
+    },
+    {
+      "role": "system",
+      "content": "⚠ No Squad team found. Run /init to create your team first.",
+      "timestamp": "2026-04-14T21:29:53.962Z"
+    },
+    {
+      "role": "system",
+      "content": "⚠ No Squad team found. Run /init to create your team first.",
+      "timestamp": "2026-04-14T21:31:06.543Z"
     }
   ]
 }

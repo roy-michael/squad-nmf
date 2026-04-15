@@ -996,3 +996,191 @@ def create_diagnostic_report(
     }
 
     return report
+
+
+def plot_cluster_scatter(
+    features: np.ndarray,
+    labels: np.ndarray,
+    title: str = "K-Means Cluster Assignments",
+    save_path: Optional[str] = None,
+) -> plt.Figure:
+    """
+    Plot clusters in 2D using PCA projection.
+
+    Reduces features to 2D with PCA and visualizes cluster assignments.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        (N, D) feature matrix.
+    labels : np.ndarray
+        (N,) cluster labels.
+    title : str, optional
+        Plot title (default: "K-Means Cluster Assignments").
+    save_path : str, optional
+        Path to save figure (no save if None).
+
+    Returns
+    -------
+    plt.Figure
+        Matplotlib figure object.
+    """
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    # PCA to 2D
+    pca = PCA(n_components=2)
+    features_2d = pca.fit_transform(features)
+
+    # Plot clusters
+    unique_labels = np.unique(labels)
+    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_labels)))
+
+    for label, color in zip(unique_labels, colors):
+        mask = labels == label
+        ax.scatter(
+            features_2d[mask, 0],
+            features_2d[mask, 1],
+            c=[color],
+            label=f"Cluster {label}",
+            s=100,
+            alpha=0.7,
+            edgecolors="k",
+            linewidth=0.5,
+        )
+
+    ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)")
+    ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)")
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.legend(loc="best", fontsize=10)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
+def plot_silhouette_analysis(
+    features: np.ndarray,
+    labels: np.ndarray,
+    silhouette_score: float,
+    title: str = "Silhouette Analysis",
+    save_path: Optional[str] = None,
+) -> plt.Figure:
+    """
+    Plot silhouette values for each sample in each cluster.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        (N, D) feature matrix (not used directly, only for context).
+    labels : np.ndarray
+        (N,) cluster labels.
+    silhouette_score : float
+        Overall silhouette score.
+    title : str, optional
+        Plot title (default: "Silhouette Analysis").
+    save_path : str, optional
+        Path to save figure (no save if None).
+
+    Returns
+    -------
+    plt.Figure
+        Matplotlib figure object.
+    """
+    from sklearn.metrics import silhouette_samples
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Compute silhouette values
+    sample_silhouette_values = silhouette_samples(features, labels)
+
+    y_lower = 10
+    colors = plt.cm.tab10(np.linspace(0, 1, len(np.unique(labels))))
+
+    for i, label in enumerate(np.unique(labels)):
+        # Aggregate silhouette scores for samples in cluster
+        ith_cluster_silhouette_values = sample_silhouette_values[labels == label]
+        ith_cluster_silhouette_values.sort()
+
+        size_cluster_i = ith_cluster_silhouette_values.shape[0]
+        y_upper = y_lower + size_cluster_i
+
+        ax.fill_betweenx(
+            np.arange(y_lower, y_upper),
+            0,
+            ith_cluster_silhouette_values,
+            facecolor=colors[i],
+            edgecolor=colors[i],
+            alpha=0.7,
+            label=f"Cluster {label}",
+        )
+
+        y_lower = y_upper + 10
+
+    ax.set_xlabel("Silhouette Coefficient", fontsize=12)
+    ax.set_ylabel("Cluster Label", fontsize=12)
+    ax.set_title(f"{title} (Score: {silhouette_score:.3f})", fontsize=14, fontweight="bold")
+    ax.axvline(x=silhouette_score, color="red", linestyle="--", linewidth=2, label="Mean")
+    ax.set_yticks([])
+    ax.legend(loc="best", fontsize=10)
+    ax.grid(True, alpha=0.3, axis="x")
+
+    plt.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
+def plot_elbow_curve(
+    silhouette_scores: Dict[int, float],
+    title: str = "Silhouette Score vs. Number of Clusters",
+    save_path: Optional[str] = None,
+) -> plt.Figure:
+    """
+    Plot silhouette scores across different cluster counts to find optimal k.
+
+    Parameters
+    ----------
+    silhouette_scores : Dict[int, float]
+        Dictionary mapping cluster count to silhouette score.
+    title : str, optional
+        Plot title (default: "Silhouette Score vs. Number of Clusters").
+    save_path : str, optional
+        Path to save figure (no save if None).
+
+    Returns
+    -------
+    plt.Figure
+        Matplotlib figure object.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    k_values = sorted(silhouette_scores.keys())
+    scores = [silhouette_scores[k] for k in k_values]
+
+    ax.plot(k_values, scores, marker="o", markersize=8, linewidth=2, color="steelblue")
+    ax.fill_between(k_values, scores, alpha=0.3, color="steelblue")
+
+    # Highlight best k
+    best_k = k_values[np.argmax(scores)]
+    best_score = max(scores)
+    ax.plot(best_k, best_score, marker="*", markersize=20, color="red", label=f"Best: k={best_k}")
+
+    ax.set_xlabel("Number of Clusters (k)", fontsize=12)
+    ax.set_ylabel("Silhouette Score", fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xticks(k_values)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best", fontsize=10)
+
+    plt.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+
+    return fig
