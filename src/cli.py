@@ -31,7 +31,7 @@ try:
     from .feature_extractor import NMFFeatureExtractor
     from .classifier import SoundClassifier, ClassifierDataset
     from .pipeline import UnderWaterAudioPipeline
-    from .kmeans_clusterer import KMeansClusterer, cluster_audio_directory
+    from .kmeans_clusterer import KMeansClusterer, cluster_audio_directory, cluster_temporal_patterns_directory
     from .visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
 except ImportError:
     # For direct execution from src/
@@ -40,7 +40,7 @@ except ImportError:
     from feature_extractor import NMFFeatureExtractor
     from classifier import SoundClassifier, ClassifierDataset
     from pipeline import UnderWaterAudioPipeline
-    from kmeans_clusterer import KMeansClusterer, cluster_audio_directory
+    from kmeans_clusterer import KMeansClusterer, cluster_audio_directory, cluster_temporal_patterns_directory
     from visualization import plot_cluster_scatter, plot_silhouette_analysis, plot_elbow_curve
 
 
@@ -1046,6 +1046,133 @@ def cluster(
         click.echo(f"3. Manually label clusters by sound type (vehicle type, etc.)")
         click.echo(f"4. Create subdirectories with labeled data")
         click.echo(f"5. Train supervised model: underwater-audio train --data-dir <labeled_data>")
+
+    except Exception as e:
+        click.echo(click.style(f"[ERROR] {str(e)}", fg="red"), err=True)
+        sys.exit(1)
+
+
+@main.command()
+@click.option(
+    '--input-dir',
+    type=click.Path(exists=True),
+    required=True,
+    help='Directory containing WAV files to analyze.'
+)
+@click.option(
+    '--n-patterns',
+    type=int,
+    default=3,
+    help='Number of temporal patterns to find within each file. [default: 3]'
+)
+@click.option(
+    '--output-json',
+    type=click.Path(),
+    default='temporal_analysis.json',
+    help='Path to save temporal analysis results. [default: temporal_analysis.json]'
+)
+@click.option(
+    '--n-jobs',
+    type=int,
+    default=-1,
+    help='Number of parallel workers. -1 = all cores, 1 = sequential. [default: -1]'
+)
+@click.option(
+    '--verbose',
+    is_flag=True,
+    help='Enable verbose logging.'
+)
+def temporal_cluster(
+    input_dir: str,
+    n_patterns: int,
+    output_json: str,
+    n_jobs: int,
+    verbose: bool
+) -> None:
+    """
+    Discover multiple sound patterns WITHIN each audio file using temporal clustering.
+
+    Analyzes NMF activations over time to identify different sound sources
+    that may be active simultaneously or at different times within the same recording.
+    
+    Useful for recordings containing multiple vehicles or mixed background noise.
+    
+    Example:
+        underwater-audio temporal-cluster --input-dir ./recordings --n-patterns 3
+    """
+    try:
+        if verbose:
+            logger.setLevel(logging.DEBUG)
+            click.echo(click.style("[INFO] Verbose mode enabled", fg="cyan"))
+
+        # Load configuration
+        try:
+            config_path = Path('config.yaml')
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+        except FileNotFoundError:
+            config = None
+
+        click.echo(click.style(f"[*] Analyzing {input_dir} for {n_patterns} temporal patterns per file...", fg="cyan"))
+
+        # Perform temporal clustering
+        temporal_results = cluster_temporal_patterns_directory(
+            Path(input_dir),
+            n_temporal_clusters=n_patterns,
+            config=config,
+            n_jobs=n_jobs,
+        )
+
+        # Prepare output
+        output_data = {}
+        for filepath, temp_result in temporal_results.items():
+            output_data[Path(filepath).name] = {
+                'file': Path(filepath).name,
+                'time_frames_analyzed': int(temp_result.time_frames),
+                'temporal_clusters': temp_result.n_temporal_clusters if hasattr(temp_result, 'n_temporal_clusters') else n_patterns,
+                'patterns': {}
+            }
+            
+            for cluster_id, (start_time, end_time) in temp_result.cluster_times.items():
+                output_data[Path(filepath).name]['patterns'][f'Pattern_{cluster_id}'] = {
+                    'time_range': f"{start_time:.2f}s - {end_time:.2f}s",
+                    'active_components': temp_result.components_active[cluster_id],
+                    'strength': temp_result.component_strength[cluster_id],
+                }
+
+        # Display results
+        click.echo("")
+        click.echo(click.style("Temporal Clustering Results:", fg="green"))
+        click.echo("")
+
+        for filename, file_data in output_data.items():
+            click.echo(f"File: {filename}")
+            click.echo(f"  Time frames analyzed: {file_data['time_frames_analyzed']}")
+            click.echo(f"  Patterns found: {file_data['temporal_clusters']}")
+            
+            for pattern_name, pattern_info in file_data['patterns'].items():
+                click.echo(f"    {pattern_name}:")
+                click.echo(f"      Time: {pattern_info['time_range']}")
+                click.echo(f"      Active components: {pattern_info['active_components']}")
+                click.echo(f"      Strength: {pattern_info['strength']:.4f}")
+            click.echo("")
+
+        # Save results
+        os.makedirs(os.path.dirname(output_json) or '.', exist_ok=True)
+        with open(output_json, 'w') as f:
+            json.dump(output_data, f, indent=2)
+        click.echo(f"[OK] Saved temporal analysis: {output_json}")
+
+        click.echo("")
+        click.echo(click.style("Interpretation Guide:", fg="yellow"))
+        click.echo("- Each pattern represents a distinct sound signature within the file")
+        click.echo("- Time range shows when each pattern was active")
+        click.echo("- Active components indicate which NMF bases contribute to each pattern")
+        click.echo("- Strength indicates how dominant this pattern is (0-1 scale)")
+        click.echo("")
+        click.echo("Example:")
+        click.echo("  File contains Pattern_0 (0.0s-15.0s) and Pattern_1 (15.0s-30.0s)")
+        click.echo("  => Likely two different vehicles or noise sources")
 
     except Exception as e:
         click.echo(click.style(f"[ERROR] {str(e)}", fg="red"), err=True)

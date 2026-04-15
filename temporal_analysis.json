@@ -1,0 +1,122 @@
+{
+  "RBW6737_20250723_094600.wav": {
+    "file": "RBW6737_20250723_094600.wav",
+    "time_frames_analyzed": 15001,
+    "temporal_clusters": 2,
+    "patterns": {
+      "Pattern_0": {
+        "time_range": "0.00s - 174.15s",
+        "active_components": [
+          1,
+          3,
+          5
+        ],
+        "strength": 0.0005986308096908033
+      },
+      "Pattern_1": {
+        "time_range": "106.51s - 114.36s",
+        "active_components": [
+          0,
+          1,
+          3
+        ],
+        "strength": 0.05298759415745735
+      }
+    }
+  },
+  "RBW6737_20250723_094700.wav": {
+    "file": "RBW6737_20250723_094700.wav",
+    "time_frames_analyzed": 15001,
+    "temporal_clusters": 2,
+    "patterns": {
+      "Pattern_0": {
+        "time_range": "0.00s - 174.15s",
+        "active_components": [
+          1,
+          4
+        ],
+        "strength": 0.0005952203064225614
+      },
+      "Pattern_1": {
+        "time_range": "5.17s - 97.58s",
+        "active_components": [
+          1,
+          2,
+          3
+        ],
+        "strength": 0.020366493612527847
+      }
+    }
+  },
+  "RBW6737_20250723_094800.wav": {
+    "file": "RBW6737_20250723_094800.wav",
+    "time_frames_analyzed": 15001,
+    "temporal_clusters": 2,
+    "patterns": {
+      "Pattern_0": {
+        "time_range": "0.00s - 174.15s",
+        "active_components": [
+          3,
+          4,
+          5
+        ],
+        "strength": 0.0008193299290724099
+      },
+      "Pattern_1": {
+        "time_range": "58.61s - 91.73s",
+        "active_components": [
+          0,
+          3,
+          4
+        ],
+        "strength": 0.04015405848622322
+      }
+    }
+  },
+  "RBW6737_20250723_094900.wav": {
+    "file": "RBW6737_20250723_094900.wav",
+    "time_frames_analyzed": 15001,
+    "temporal_clusters": 2,
+    "patterns": {
+      "Pattern_0": {
+        "time_range": "0.00s - 174.15s",
+        "active_components": [
+          4,
+          5
+        ],
+        "strength": 0.000537296524271369
+      },
+      "Pattern_1": {
+        "time_range": "145.04s - 165.09s",
+        "active_components": [
+          0,
+          2
+        ],
+        "strength": 0.06926187127828598
+      }
+    }
+  },
+  "RBW6737_20250723_095000.wav": {
+    "file": "RBW6737_20250723_095000.wav",
+    "time_frames_analyzed": 15001,
+    "temporal_clusters": 2,
+    "patterns": {
+      "Pattern_0": {
+        "time_range": "0.00s - 174.15s",
+        "active_components": [
+          1,
+          4
+        ],
+        "strength": 0.001064400770701468
+      },
+      "Pattern_1": {
+        "time_range": "22.55s - 22.93s",
+        "active_components": [
+          0,
+          5
+        ],
+        "strength": 0.21210052073001862
+      }
+    }
+  }
+}

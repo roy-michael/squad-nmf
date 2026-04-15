@@ -39,6 +39,18 @@ class ClusteringResult:
     davies_bouldin_score: float  # Davies-Bouldin index (lower is better)
     inertia: float  # Sum of squared distances to nearest centroid
     feature_names: List[str]  # Names of extracted features
+    metadata: Optional[Dict] = None  # Optional clustering metadata
+
+
+@dataclass
+class TemporalClusteringResult:
+    """Result from temporal (within-file) clustering."""
+    filepath: str  # Audio file path
+    time_clusters: np.ndarray  # Cluster label for each time step
+    time_frames: int  # Number of time frames analyzed
+    components_active: Dict[int, List[int]]  # {cluster_id: [active_component_indices]}
+    component_strength: Dict[int, float]  # {cluster_id: mean_activation_strength}
+    cluster_times: Dict[int, Tuple[float, float]]  # {cluster_id: (start_sec, end_sec)}
 
 
 class KMeansClusterer:
@@ -182,6 +194,98 @@ class KMeansClusterer:
             }
 
         return info
+
+    def cluster_temporal_patterns(
+        self,
+        H: np.ndarray,
+        n_clusters: int,
+        hop_length: int = 512,
+        sr: int = 44100,
+    ) -> TemporalClusteringResult:
+        """
+        Cluster temporal patterns within a single audio file using H matrix.
+        
+        Discovers different sound sources/patterns active at different times
+        within the same recording.
+        
+        Args:
+            H: NMF activation matrix (n_components × time_steps)
+            n_clusters: Number of temporal clusters to find
+            hop_length: Hop length used in STFT (for time reconstruction)
+            sr: Sample rate (for time reconstruction)
+        
+        Returns:
+            TemporalClusteringResult with temporal cluster assignments
+        """
+        n_components, n_frames = H.shape
+        
+        # Transpose H so each row is a time frame (time_steps × n_components)
+        H_transposed = H.T  # (time_steps × n_components)
+        
+        # Standardize activations across time
+        scaler = StandardScaler()
+        H_scaled = scaler.fit_transform(H_transposed)
+        
+        # Cluster time frames
+        kmeans = KMeans(
+            n_clusters=n_clusters,
+            random_state=self.random_state,
+            n_init=self.n_init,
+            max_iter=self.max_iter,
+        )
+        time_labels = kmeans.fit_predict(H_scaled)
+        
+        # Analyze which components are active in each cluster
+        components_active = {}
+        component_strength = {}
+        cluster_times = {}
+        
+        for cluster_id in range(n_clusters):
+            # Find time frames belonging to this cluster
+            mask = time_labels == cluster_id
+            frames_in_cluster = np.where(mask)[0]
+            
+            if len(frames_in_cluster) == 0:
+                components_active[cluster_id] = []
+                component_strength[cluster_id] = 0.0
+                cluster_times[cluster_id] = (0.0, 0.0)
+                continue
+            
+            # Get H values for frames in this cluster
+            H_cluster = H_transposed[mask, :]  # (frames_in_cluster × n_components)
+            
+            # Find dominant components
+            mean_activations = np.mean(H_cluster, axis=0)
+            active_components = np.where(mean_activations > np.mean(mean_activations))[0].tolist()
+            
+            # Calculate cluster strength
+            cluster_strength = np.mean(mean_activations)
+            
+            # Calculate time range (approximate)
+            first_frame = frames_in_cluster[0]
+            last_frame = frames_in_cluster[-1]
+            start_time = first_frame * hop_length / sr
+            end_time = last_frame * hop_length / sr
+            
+            components_active[cluster_id] = active_components
+            component_strength[cluster_id] = float(cluster_strength)
+            cluster_times[cluster_id] = (start_time, end_time)
+            
+            logger.debug(
+                f"Temporal Cluster {cluster_id}: "
+                f"components {active_components}, "
+                f"frames {first_frame}-{last_frame}, "
+                f"time {start_time:.2f}-{end_time:.2f}s"
+            )
+        
+        return TemporalClusteringResult(
+            filepath="",  # Will be set by caller
+            time_clusters=time_labels,
+            time_frames=n_frames,
+            components_active=components_active,
+            component_strength=component_strength,
+            cluster_times=cluster_times,
+        )
 
     def find_optimal_clusters(
         self,
@@ -403,3 +507,86 @@ def cluster_audio_directory(
     result = clusterer.fit(features, valid_files)
 
     return result, clusterer, valid_files
+
+
+def cluster_temporal_patterns_directory(
+    data_dir: Path,
+    n_temporal_clusters: int = 3,
+    config: Optional[Dict] = None,
+    n_jobs: int = -1,
+) -> Dict[str, TemporalClusteringResult]:
+    """
+    Identify multiple sound patterns within each audio file using temporal clustering.
+    
+    Clusters time frames of NMF activations to discover different sound sources
+    that may be active simultaneously or at different times within each recording.
+    
+    Args:
+        data_dir: Directory containing WAV files
+        n_temporal_clusters: Number of temporal patterns to find within each file
+        config: Configuration dict (uses defaults if None)
+        n_jobs: Number of parallel workers
+    
+    Returns:
+        Dictionary mapping filepath to TemporalClusteringResult
+    """
+    # Default config
+    if config is None:
+        config = {
+            "preprocessor": {
+                "n_fft": 8192,
+                "min_freq": 200,
+                "max_freq": 12000,
+                "n_mels": 128,
+                "noise_gate_multiplier": 1.5,
+                "hpss_margin": 3.0,
+            },
+            "nmf": {"n_components": 6, "use_sklearn": True, "max_iter": 2000},
+        }
+    
+    preprocessor = AudioPreprocessor(**config["preprocessor"])
+    feature_extractor = NMFFeatureExtractor(**config["nmf"])
+    
+    wav_files = sorted(Path(data_dir).glob("*.wav"))
+    logger.info(f"Found {len(wav_files)} WAV files in {data_dir}")
+    
+    if len(wav_files) == 0:
+        raise ValueError(f"No WAV files found in {data_dir}")
+    
+    # Extract NMF H matrices
+    logger.info(f"Extracting NMF from {len(wav_files)} files for temporal analysis...")
+    results = Parallel(n_jobs=n_jobs, verbose=1)(
+        delayed(_process_single_audio_file_nmf)(wav_file, preprocessor, feature_extractor)
+        for wav_file in wav_files
+    )
+    
+    # Perform temporal clustering on each file's H matrix
+    clusterer = KMeansClusterer(n_clusters=n_temporal_clusters)
+    temporal_results = {}
+    
+    hop_length = config["preprocessor"].get("n_fft", 8192) // 16
+    
+    for nmf_result, filepath in results:
+        if nmf_result is None:
+            logger.warning(f"Skipping temporal clustering for {Path(filepath).name} (NMF extraction failed)")
+            continue
+        
+        W, H = nmf_result
+        
+        try:
+            # Cluster temporal patterns in this file
+            temp_result = clusterer.cluster_temporal_patterns(
+                H=H,
+                n_clusters=n_temporal_clusters,
+                hop_length=hop_length,
+            )
+            temp_result.filepath = filepath
+            temporal_results[filepath] = temp_result
+            
+            logger.info(f"Temporal analysis {Path(filepath).name}: {n_temporal_clusters} patterns detected")
+            
+        except Exception as e:
+            logger.warning(f"Temporal clustering failed for {Path(filepath).name}: {e}")
+            continue
+    
+    return temporal_results
