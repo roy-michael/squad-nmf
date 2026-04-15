@@ -58,7 +58,28 @@ All documentation files are in **`D:\dev\squad-nmf/`**
 - **Best for:** Understanding visualization capabilities
 - **Size:** Varies
 
-### 7. **TRAINING_DEMONSTRATION.md** ⭐ HOW TO TRAIN
+### 7. **NMF_CLUSTERING_MODES.md** ⭐ CLUSTERING STRATEGIES
+**File:** `D:\dev\squad-nmf\NMF_CLUSTERING_MODES.md`
+- **What:** Advanced clustering modes guide
+- **Contains:** Features mode, Basis mode, Activation mode, Combined mode with benchmarks
+- **Best for:** Choosing clustering strategy
+- **Size:** 10.3 KB
+
+### 8. **TEMPORAL_CLUSTERING_GUIDE.md** ⭐ NEW - MULTI-PATTERN DISCOVERY
+**File:** `D:\dev\squad-nmf\TEMPORAL_CLUSTERING_GUIDE.md`
+- **What:** Temporal clustering for discovering multiple patterns within audio files
+- **Contains:** Why temporal clustering, how it works, CLI usage, real-world examples, interpretation guide
+- **Best for:** Finding multiple vehicles/patterns in single recordings
+- **Size:** 11.3 KB
+
+### 9. **PARALLELIZATION_SUMMARY.md**
+**File:** `D:\dev\squad-nmf\PARALLELIZATION_SUMMARY.md`
+- **What:** Parallel processing optimization guide
+- **Contains:** Performance improvements (4.1x speedup), joblib integration, worker control
+- **Best for:** Understanding performance and scaling
+- **Size:** 6.6 KB
+
+### 10. **TRAINING_DEMONSTRATION.md** ⭐ HOW TO TRAIN
 **File:** `D:\dev\squad-nmf\TRAINING_DEMONSTRATION.md`
 - **What:** Step-by-step training guide
 - **Contains:** Dataset prep, training commands, pipeline steps
@@ -69,14 +90,14 @@ All documentation files are in **`D:\dev\squad-nmf/`**
 
 ## 🖥️ **CLI Documentation**
 
-### 8. **CLI_USER_GUIDE.md**
+### 11. **CLI_USER_GUIDE.md**
 **File:** `D:\dev\squad-nmf\CLI_USER_GUIDE.md`
 - **What:** Command-line interface user guide
-- **Contains:** All 5 CLI commands, usage examples
+- **Contains:** All 6 CLI commands, usage examples
 - **Best for:** Using the CLI
 - **Size:** Varies
 
-### 9. **CLI_DEVELOPER_GUIDE.md**
+### 12. **CLI_DEVELOPER_GUIDE.md**
 **File:** `D:\dev\squad-nmf\CLI_DEVELOPER_GUIDE.md`
 - **What:** CLI development reference
 - **Contains:** Architecture, adding new commands
@@ -87,18 +108,18 @@ All documentation files are in **`D:\dev\squad-nmf/`**
 
 ## ⚙️ **Configuration**
 
-### 10. **config.yaml**
+### 13. **config.yaml**
 **File:** `D:\dev\squad-nmf\config.yaml`
 - **What:** Default configuration
 - **Contains:** Preprocessor, NMF, classifier settings
 - **Best for:** Understanding configuration
-- **Size:** 66 lines
+- **Size:** 96 lines
 
 ---
 
 ## 🔧 **Training Script**
 
-### 11. **train_demo.py**
+### 14. **train_demo.py**
 **File:** `D:\dev\squad-nmf\train_demo.py`
 - **What:** Standalone training script
 - **Contains:** Complete training pipeline
@@ -145,10 +166,13 @@ Run tests: `pytest tests/ -v`
 **Understand the project?** → `FINAL_SUMMARY.txt`  
 **Get full details?** → `PROJECT_COMPLETION_SUMMARY.md`  
 **See test results?** → `QA_DELIVERY_REPORT.md`  
+**Discover multiple sound patterns?** → `TEMPORAL_CLUSTERING_GUIDE.md` ⭐ NEW
+**Choose clustering strategy?** → `NMF_CLUSTERING_MODES.md`  
+**Optimize performance?** → `PARALLELIZATION_SUMMARY.md`  
 **Learn how to train?** → `TRAINING_DEMONSTRATION.md`  
 **Use the CLI?** → `CLI_USER_GUIDE.md`  
 **Check current status?** → `DELIVERY_STATUS.txt`  
-**Run training now?** → `python train_demo.py`  
+**Run training now?** → `python train_demo.py`
 
 ---
 
