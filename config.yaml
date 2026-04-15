@@ -43,7 +43,9 @@ nmf:
   use_sklearn: true
 
   # Maximum iterations for NMF convergence algorithm
-  max_iter: 500
+  # Increased from 500 to 2000 to avoid convergence warnings
+  # NMF typically converges in 200-800 iterations; 2000 provides safety margin
+  max_iter: 2000
 
 # K-Means Clustering Configuration
 # For unsupervised discovery of sound patterns in unlabeled recordings

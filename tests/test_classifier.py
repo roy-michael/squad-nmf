@@ -319,13 +319,13 @@ class TestAudioClassificationPipeline:
         """Test single audio classification through pipeline."""
         # First train pipeline
         preprocessor = AudioPreprocessor()
-        feature_extractor = NMFFeatureExtractor(n_components=4)
+        feature_extractor = NMFFeatureExtractor(n_components=6)  # Must match default
         classifier = SoundClassifier(model_type="rf")
         
         pipeline = AudioClassificationPipeline(preprocessor, feature_extractor, classifier)
         
         # Create training files (synthetic)
-        features, labels = multiple_feature_vectors
+        features, labels = multiple_feature_vectors  # 48-dim features
         
         # Simple mock training
         classifier.train(features[:10], labels[:10])

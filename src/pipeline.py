@@ -150,7 +150,7 @@ class UnderWaterAudioPipeline:
             'nmf': {
                 'n_components': 6,
                 'use_sklearn': True,
-                'max_iter': 500,
+                'max_iter': 2000,
             },
             'classifier': {
                 'model_type': 'rf',

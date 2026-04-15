@@ -141,11 +141,11 @@ class TestFullPipelineIntegration:
     def test_full_pipeline_workflow(self, synthetic_audio, multiple_feature_vectors):
         """Test complete workflow: preprocess -> extract -> classify."""
         audio, sr = synthetic_audio
-        features, labels = multiple_feature_vectors
+        features, labels = multiple_feature_vectors  # 48-dim features
         
         # Setup pipeline
         preprocessor = AudioPreprocessor()
-        feature_extractor = NMFFeatureExtractor(n_components=4)
+        feature_extractor = NMFFeatureExtractor(n_components=6)  # Must match default
         classifier = SoundClassifier(model_type="rf")
         
         # Process audio

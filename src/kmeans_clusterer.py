@@ -287,7 +287,7 @@ def cluster_audio_directory(
                 "noise_gate_multiplier": 1.5,
                 "hpss_margin": 3.0,
             },
-            "nmf": {"n_components": 6, "use_sklearn": True, "max_iter": 500},
+            "nmf": {"n_components": 6, "use_sklearn": True, "max_iter": 2000},
         }
 
     # Load audio files
